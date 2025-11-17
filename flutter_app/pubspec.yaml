@@ -1,0 +1,52 @@
+name: nepaladvocate
+description: NepalAdvocate - Lawyer Booking & Counseling App
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+  # Networking
+  dio: ^5.4.0
+  socket_io_client: ^2.0.3+1
+
+  # Storage
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.2.2
+
+  # UI
+  google_fonts: ^6.1.0
+  intl: ^0.19.0
+  cached_network_image: ^3.3.0
+  flutter_svg: ^2.0.9
+
+  # File Handling
+  file_picker: ^6.1.1
+  image_picker: ^1.0.5
+  permission_handler: ^11.1.0
+
+  # WebView
+  webview_flutter: ^4.4.2
+
+  # Utils
+  uuid: ^4.2.1
+  timeago: ^3.6.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  riverpod_generator: ^2.3.9
+
+flutter:
+  uses-material-design: true
+
