@@ -47,6 +47,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _handleRegister() async {
     final l10n = AppLocalizations.of(context)!;
     
+    // Validate form first
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
+    // Then check terms and privacy acceptance
     if (!_acceptedTerms || !_acceptedPrivacy) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -57,39 +63,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    if (_formKey.currentState!.validate()) {
-      // Don't send lawyerData if it's empty - let backend handle lawyer profile creation later
-      Map<String, dynamic>? lawyerData;
-      // Only set lawyerData if we have actual data to send
-      // For now, lawyers can register without profile details
-      
-      final phoneValue = _phoneController.text.trim();
-      
-      final success = await ref.read(authControllerProvider.notifier).register(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-            role: _selectedRole.value,
-            firstName: _firstNameController.text.trim(),
-            lastName: _lastNameController.text.trim(),
-            phone: phoneValue.isEmpty ? null : phoneValue,
-            lawyerData: null, // Don't send empty lawyerData
-            acceptedTerms: _acceptedTerms,
-            acceptedPrivacy: _acceptedPrivacy,
-          );
+    // Proceed with registration
+    // Don't send lawyerData if it's empty - let backend handle lawyer profile creation later
+    Map<String, dynamic>? lawyerData;
+    // Only set lawyerData if we have actual data to send
+    // For now, lawyers can register without profile details
+    
+    final phoneValue = _phoneController.text.trim();
+    
+    final success = await ref.read(authControllerProvider.notifier).register(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          role: _selectedRole.value,
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          phone: phoneValue.isEmpty ? null : phoneValue,
+          lawyerData: null, // Don't send empty lawyerData
+          acceptedTerms: _acceptedTerms,
+          acceptedPrivacy: _acceptedPrivacy,
+        );
 
-      if (mounted) {
-        if (success) {
-          // Navigation handled by auth state listener
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                ref.read(authControllerProvider).errorMessage ?? 'Registration failed',
-              ),
-              backgroundColor: AppTheme.errorColor,
+    if (mounted) {
+      if (success) {
+        // Navigation handled by auth state listener
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ref.read(authControllerProvider).errorMessage ?? 'Registration failed',
             ),
-          );
-        }
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
     }
   }
@@ -308,10 +313,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     children: [
                       CheckboxListTile(
                         value: _acceptedTerms,
-                        onChanged: (value) {
-                          setState(() {
-                            _acceptedTerms = value ?? false;
-                          });
+                        onChanged: (bool? value) {
+                          if (value != null) {
+                            setState(() {
+                              _acceptedTerms = value;
+                            });
+                          }
                         },
                         title: Row(
                           children: [
@@ -346,10 +353,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       CheckboxListTile(
                         value: _acceptedPrivacy,
-                        onChanged: (value) {
-                          setState(() {
-                            _acceptedPrivacy = value ?? false;
-                          });
+                        onChanged: (bool? value) {
+                          if (value != null) {
+                            setState(() {
+                              _acceptedPrivacy = value;
+                            });
+                          }
                         },
                         title: Row(
                           children: [
