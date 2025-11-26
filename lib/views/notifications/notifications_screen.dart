@@ -5,6 +5,7 @@ import '../../widgets/common/app_card.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../controllers/notification_controller.dart';
+import '../../controllers/appointment_controller.dart';
 import '../../models/notification_model.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
@@ -85,6 +86,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   IconData _getNotificationIcon(String type) {
     switch (type) {
       case 'APPOINTMENT_REQUEST':
+      case 'APPOINTMENT_PROPOSED':
       case 'APPOINTMENT_CONFIRMED':
       case 'APPOINTMENT_CANCELLED':
         return Icons.event;
@@ -103,6 +105,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     switch (type) {
       case 'APPOINTMENT_CONFIRMED':
         return AppTheme.successColor;
+      case 'APPOINTMENT_PROPOSED':
+        return AppTheme.accentColor;
       case 'APPOINTMENT_CANCELLED':
         return AppTheme.errorColor;
       case 'MESSAGE':
@@ -268,6 +272,52 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                       color: AppTheme.textSecondary,
                                     ),
                               ),
+                              // Show action buttons for APPOINTMENT_PROPOSED notifications
+                              if (notification.type == 'APPOINTMENT_PROPOSED' && 
+                                  notification.relatedId != null &&
+                                  notification.relatedType == 'appointment') ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () async {
+                                          await _markAsRead(notification);
+                                          try {
+                                            await ref.read(appointmentControllerProvider.notifier).confirmAppointment(
+                                              notification.relatedId!,
+                                            );
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Appointment time accepted!'),
+                                                  backgroundColor: AppTheme.successColor,
+                                                ),
+                                              );
+                                              ref.invalidate(notificationsProvider);
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Failed to accept: ${e.toString()}'),
+                                                  backgroundColor: AppTheme.errorColor,
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        icon: const Icon(Icons.check, size: 18),
+                                        label: const Text('Accept Time'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppTheme.successColor,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),

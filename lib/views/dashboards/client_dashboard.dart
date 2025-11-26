@@ -309,9 +309,11 @@ class _ClientDashboardState extends ConsumerState<ClientDashboard> {
               const SizedBox(height: AppConstants.spacingM),
               appointmentsAsync.when(
                 data: (appointments) {
-                  // Filter out completed appointments and sort by nearest date
+                  // Filter out completed and cancelled appointments (they go to history)
+                  // and sort by nearest date
                   final unfinishedAppointments = appointments
-                      .where((apt) => apt.status != AppointmentStatus.completed)
+                      .where((apt) => apt.status != AppointmentStatus.completed && 
+                                      apt.status != AppointmentStatus.cancelled)
                       .toList()
                     ..sort((a, b) {
                       final dateA = a.confirmedDate ?? a.proposedDate;
@@ -336,7 +338,7 @@ class _ClientDashboardState extends ConsumerState<ClientDashboard> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Check history for completed consultations',
+                              'Check history for completed and cancelled consultations',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: AppTheme.textSecondary,
                                   ),

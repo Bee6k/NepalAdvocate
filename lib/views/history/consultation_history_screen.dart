@@ -45,7 +45,7 @@ class ConsultationHistoryScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Completed consultations will appear here',
+                      'Completed and cancelled consultations will appear here',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppTheme.textSecondary,
                           ),
@@ -141,13 +141,15 @@ class ConsultationHistoryScreen extends ConsumerWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppTheme.successColor.withOpacity(0.1),
+                              color: _getStatusColor(appointment.status).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              'Completed',
+                              appointment.status == AppointmentStatus.cancelled 
+                                  ? 'Cancelled' 
+                                  : 'Completed',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppTheme.successColor,
+                                    color: _getStatusColor(appointment.status),
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
@@ -195,7 +197,9 @@ class ConsultationHistoryScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Completed on ${dateFormat.format(appointment.updatedAt)}',
+                        appointment.status == AppointmentStatus.cancelled
+                            ? 'Cancelled on ${dateFormat.format(appointment.updatedAt)}'
+                            : 'Completed on ${dateFormat.format(appointment.updatedAt)}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppTheme.textSecondary,
                               fontStyle: FontStyle.italic,
@@ -243,6 +247,17 @@ class ConsultationHistoryScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Color _getStatusColor(AppointmentStatus status) {
+    switch (status) {
+      case AppointmentStatus.completed:
+        return AppTheme.successColor;
+      case AppointmentStatus.cancelled:
+        return AppTheme.errorColor;
+      default:
+        return AppTheme.successColor;
+    }
   }
 }
 

@@ -14,6 +14,7 @@ import '../chat/chat_screen.dart';
 import '../documents/document_upload_screen.dart';
 import '../lawyers/lawyer_profile_edit_screen.dart';
 import '../clients/lawyer_clients_screen.dart';
+import '../../widgets/appointments/propose_time_dialog.dart';
 
 class LawyerDashboard extends ConsumerStatefulWidget {
   const LawyerDashboard({super.key});
@@ -691,13 +692,41 @@ class _LawyerDashboardState extends ConsumerState<LawyerDashboard> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: OutlinedButton.icon(
-                                      onPressed: () {
-                                        // TODO: Implement propose new time dialog
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Propose time feature coming soon'),
+                                      onPressed: () async {
+                                        final result = await showDialog<Map<String, dynamic>>(
+                                          context: context,
+                                          builder: (context) => ProposeTimeDialog(
+                                            initialDate: appointment.proposedDate,
+                                            initialTime: appointment.proposedTime,
                                           ),
                                         );
+
+                                        if (result != null && mounted) {
+                                          try {
+                                            await ref.read(appointmentControllerProvider.notifier).proposeTime(
+                                                  appointmentId: appointment.id,
+                                                  proposedDate: result['date'] as DateTime,
+                                                  proposedTime: result['time'] as String,
+                                                );
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Time proposed successfully! Client will be notified.'),
+                                                  backgroundColor: AppTheme.successColor,
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Failed to propose time: ${e.toString()}'),
+                                                  backgroundColor: AppTheme.errorColor,
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        }
                                       },
                                       icon: const Icon(Icons.schedule, size: 18),
                                       label: const Text('Propose Time'),
