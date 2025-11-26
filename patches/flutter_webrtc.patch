@@ -1,0 +1,23 @@
+--- a/android/src/main/java/com/cloudwebrtc/webrtc/FlutterWebRTCPlugin.java
++++ b/android/src/main/java/com/cloudwebrtc/webrtc/FlutterWebRTCPlugin.java
+@@ -22,7 +22,6 @@
+ package com.cloudwebrtc.webrtc;
+ 
+ import android.app.Activity;
+-import io.flutter.plugin.common.PluginRegistry.Registrar;
+ import io.flutter.embedding.engine.plugins.FlutterPlugin;
+ import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+@@ -46,11 +45,6 @@ public class FlutterWebRTCPlugin implements FlutterPlugin, ActivityAware, Meth
+   private FlutterState flutterState;
+   private static final String TAG = "FlutterWebRTCPlugin";
+ 
+-  public static void registerWith(Registrar registrar) {
+-    final FlutterWebRTCPlugin plugin = new FlutterWebRTCPlugin();
+-    plugin.startListening(registrar.messenger());
+-  }
+-
+   public FlutterWebRTCPlugin() {
+     this.flutterState = new FlutterState(null, null, null, null);
+   }
+
