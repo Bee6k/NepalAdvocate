@@ -299,18 +299,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                       ),
                                     ],
                                   ),
-                              // Show action buttons for APPOINTMENT_PROPOSED notifications
-                              // Only show if action is not in progress and notification is not read
-                              if (notification.type == 'APPOINTMENT_PROPOSED' && 
-                                  notification.relatedId != null &&
-                                  notification.relatedType == 'appointment' &&
-                                  !_actionInProgress[notification.id] &&
-                                  !notification.isRead) ...[
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton.icon(
+                                  // Show action buttons for APPOINTMENT_PROPOSED notifications
+                                  // Only show if action is not in progress and notification is not read
+                                  if (notification.type == 'APPOINTMENT_PROPOSED' && 
+                                      notification.relatedId != null &&
+                                      notification.relatedType == 'appointment' &&
+                                      (_actionInProgress[notification.id] != true) &&
+                                      !notification.isRead) ...[
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton.icon(
                                         onPressed: _actionInProgress[notification.id] == true
                                             ? null
                                             : () async {
@@ -363,27 +363,27 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                                   }
                                                 }
                                               },
-                                        icon: _actionInProgress[notification.id] == true
-                                            ? const SizedBox(
-                                                width: 18,
-                                                height: 18,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                ),
-                                              )
-                                            : const Icon(Icons.check, size: 18),
-                                        label: Text(_actionInProgress[notification.id] == true ? 'Accepting...' : 'Accept Time'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppTheme.successColor,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                            icon: _actionInProgress[notification.id] == true
+                                                ? const SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                    ),
+                                                  )
+                                                : const Icon(Icons.check, size: 18),
+                                            label: Text(_actionInProgress[notification.id] == true ? 'Accepting...' : 'Accept Time'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppTheme.successColor,
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: OutlinedButton.icon(
                                         onPressed: _actionInProgress[notification.id] == true
                                             ? null
                                             : () async {
@@ -461,28 +461,27 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                                   }
                                                 }
                                               },
-                                        icon: _actionInProgress[notification.id] == true
-                                            ? const SizedBox(
-                                                width: 18,
-                                                height: 18,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                                                ),
-                                              )
-                                            : const Icon(Icons.cancel, size: 18),
-                                        label: Text(_actionInProgress[notification.id] == true ? 'Cancelling...' : 'Cancel'),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: AppTheme.errorColor,
-                                          side: BorderSide(color: AppTheme.errorColor),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                            icon: _actionInProgress[notification.id] == true
+                                                ? const SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                                    ),
+                                                  )
+                                                : const Icon(Icons.cancel, size: 18),
+                                            label: Text(_actionInProgress[notification.id] == true ? 'Cancelling...' : 'Cancel'),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: AppTheme.errorColor,
+                                              side: BorderSide(color: AppTheme.errorColor),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
                                   ],
-                                ),
-                                ],
-                              ],
                             ],
                           ),
                         ),
