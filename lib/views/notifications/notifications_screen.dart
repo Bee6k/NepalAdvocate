@@ -16,6 +16,8 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  final Map<String, bool> _actionInProgress = {}; // Track which notifications have actions in progress
+
   Future<void> _clearAllNotifications() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -207,178 +209,279 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
                   child: AppCard(
-                    onTap: () => _markAsRead(notification),
-                    child: Row(
+                    onTap: notification.type == 'APPOINTMENT_PROPOSED' && 
+                           !notification.isRead &&
+                           _actionInProgress[notification.id] != true
+                        ? null // Disable tap if it has action buttons
+                        : () => _markAsRead(notification),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            icon,
-                            color: color,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: AppConstants.spacingM),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: color.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                icon,
+                                color: color,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: AppConstants.spacingM),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      notification.title,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: notification.isRead
-                                                ? FontWeight.normal
-                                                : FontWeight.bold,
-                                          ),
-                                    ),
-                                  ),
-                                  if (!notification.isRead)
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryColor,
-                                        shape: BoxShape.circle,
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          notification.title,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: notification.isRead
+                                                    ? FontWeight.normal
+                                                    : FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                        ),
                                       ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                notification.message,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: notification.isRead
-                                          ? AppTheme.textSecondary
-                                          : AppTheme.textPrimary,
-                                    ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _formatDate(notification.createdAt),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppTheme.textSecondary,
-                                    ),
-                              ),
+                                      if (!notification.isRead)
+                                        Container(
+                                          width: 10,
+                                          height: 10,
+                                          margin: const EdgeInsets.only(left: 8),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    notification.message,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: notification.isRead
+                                              ? AppTheme.textSecondary
+                                              : AppTheme.textPrimary,
+                                          fontSize: 14,
+                                        ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.access_time,
+                                        size: 14,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _formatDate(notification.createdAt),
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: AppTheme.textSecondary,
+                                              fontSize: 12,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
                               // Show action buttons for APPOINTMENT_PROPOSED notifications
+                              // Only show if action is not in progress and notification is not read
                               if (notification.type == 'APPOINTMENT_PROPOSED' && 
                                   notification.relatedId != null &&
-                                  notification.relatedType == 'appointment') ...[
+                                  notification.relatedType == 'appointment' &&
+                                  !_actionInProgress[notification.id] &&
+                                  !notification.isRead) ...[
                                 const SizedBox(height: 12),
                                 Row(
                                   children: [
                                     Expanded(
                                       child: ElevatedButton.icon(
-                                        onPressed: () async {
-                                          await _markAsRead(notification);
-                                          try {
-                                            await ref.read(appointmentControllerProvider.notifier).confirmAppointment(
-                                              notification.relatedId!,
-                                            );
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('Appointment time accepted!'),
-                                                  backgroundColor: AppTheme.successColor,
+                                        onPressed: _actionInProgress[notification.id] == true
+                                            ? null
+                                            : () async {
+                                                setState(() {
+                                                  _actionInProgress[notification.id] = true;
+                                                });
+                                                
+                                                await _markAsRead(notification);
+                                                
+                                                try {
+                                                  // Accept the proposed time
+                                                  await ref.read(appointmentControllerProvider.notifier).confirmAppointment(
+                                                    notification.relatedId!,
+                                                  );
+                                                  
+                                                  // Refresh appointments list and consultation history
+                                                  ref.read(appointmentControllerProvider.notifier).loadAppointments();
+                                                  ref.invalidate(consultationHistoryProvider);
+                                                  
+                                                  if (mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text('Appointment time accepted! The lawyer will be notified.'),
+                                                        backgroundColor: AppTheme.successColor,
+                                                        duration: Duration(seconds: 3),
+                                                      ),
+                                                    );
+                                                    
+                                                    // Refresh notifications
+                                                    ref.invalidate(notificationsProvider);
+                                                    
+                                                    // Remove from in-progress
+                                                    setState(() {
+                                                      _actionInProgress.remove(notification.id);
+                                                    });
+                                                  }
+                                                } catch (e) {
+                                                  if (mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('Failed to accept: ${e.toString()}'),
+                                                        backgroundColor: AppTheme.errorColor,
+                                                        duration: const Duration(seconds: 3),
+                                                      ),
+                                                    );
+                                                    
+                                                    setState(() {
+                                                      _actionInProgress.remove(notification.id);
+                                                    });
+                                                  }
+                                                }
+                                              },
+                                        icon: _actionInProgress[notification.id] == true
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                 ),
-                                              );
-                                              ref.invalidate(notificationsProvider);
-                                            }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text('Failed to accept: ${e.toString()}'),
-                                                  backgroundColor: AppTheme.errorColor,
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                        icon: const Icon(Icons.check, size: 18),
-                                        label: const Text('Accept Time'),
+                                              )
+                                            : const Icon(Icons.check, size: 18),
+                                        label: Text(_actionInProgress[notification.id] == true ? 'Accepting...' : 'Accept Time'),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: AppTheme.successColor,
                                           foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: OutlinedButton.icon(
-                                        onPressed: () async {
-                                          final shouldCancel = await showDialog<bool>(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: const Text('Cancel Appointment'),
-                                              content: const Text(
-                                                'Are you sure you want to cancel this appointment? This action cannot be undone.',
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () => Navigator.pop(context, false),
-                                                  child: const Text('No'),
-                                                ),
-                                                ElevatedButton(
-                                                  onPressed: () => Navigator.pop(context, true),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: AppTheme.errorColor,
+                                        onPressed: _actionInProgress[notification.id] == true
+                                            ? null
+                                            : () async {
+                                                final shouldCancel = await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) => AlertDialog(
+                                                    title: const Text('Cancel Appointment'),
+                                                    content: const Text(
+                                                      'Are you sure you want to cancel this appointment? This action cannot be undone.',
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () => Navigator.pop(context, false),
+                                                        child: const Text('No'),
+                                                      ),
+                                                      ElevatedButton(
+                                                        onPressed: () => Navigator.pop(context, true),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: AppTheme.errorColor,
+                                                        ),
+                                                        child: const Text('Yes, Cancel'),
+                                                      ),
+                                                    ],
                                                   ),
-                                                  child: const Text('Yes, Cancel'),
-                                                ),
-                                              ],
-                                            ),
-                                          );
+                                                );
 
-                                          if (shouldCancel == true) {
-                                            await _markAsRead(notification);
-                                            try {
-                                              await ref.read(appointmentControllerProvider.notifier).cancelAppointment(
-                                                notification.relatedId!,
-                                              );
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text('Appointment cancelled'),
-                                                    backgroundColor: AppTheme.errorColor,
-                                                  ),
-                                                );
-                                                ref.invalidate(notificationsProvider);
-                                              }
-                                            } catch (e) {
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text('Failed to cancel: ${e.toString()}'),
-                                                    backgroundColor: AppTheme.errorColor,
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          }
-                                        },
-                                        icon: const Icon(Icons.cancel, size: 18),
-                                        label: const Text('Cancel'),
+                                                if (shouldCancel == true && mounted) {
+                                                  setState(() {
+                                                    _actionInProgress[notification.id] = true;
+                                                  });
+                                                  
+                                                  await _markAsRead(notification);
+                                                  
+                                                  try {
+                                                    // Cancel the appointment
+                                                    await ref.read(appointmentControllerProvider.notifier).cancelAppointment(
+                                                      notification.relatedId!,
+                                                    );
+                                                    
+                                                    // Refresh appointments list and consultation history
+                                                    ref.read(appointmentControllerProvider.notifier).loadAppointments();
+                                                    ref.invalidate(consultationHistoryProvider);
+                                                    
+                                                    if (mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text('Appointment cancelled successfully.'),
+                                                          backgroundColor: AppTheme.errorColor,
+                                                          duration: Duration(seconds: 3),
+                                                        ),
+                                                      );
+                                                      
+                                                      // Refresh notifications
+                                                      ref.invalidate(notificationsProvider);
+                                                      
+                                                      // Remove from in-progress
+                                                      setState(() {
+                                                        _actionInProgress.remove(notification.id);
+                                                      });
+                                                    }
+                                                  } catch (e) {
+                                                    if (mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('Failed to cancel: ${e.toString()}'),
+                                                          backgroundColor: AppTheme.errorColor,
+                                                          duration: const Duration(seconds: 3),
+                                                        ),
+                                                      );
+                                                      
+                                                      setState(() {
+                                                        _actionInProgress.remove(notification.id);
+                                                      });
+                                                    }
+                                                  }
+                                                }
+                                              },
+                                        icon: _actionInProgress[notification.id] == true
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                                ),
+                                              )
+                                            : const Icon(Icons.cancel, size: 18),
+                                        label: Text(_actionInProgress[notification.id] == true ? 'Cancelling...' : 'Cancel'),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: AppTheme.errorColor,
                                           side: BorderSide(color: AppTheme.errorColor),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
+                                ],
                               ],
                             ],
                           ),
