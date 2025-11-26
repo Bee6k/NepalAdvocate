@@ -151,11 +151,14 @@ class AuthController extends StateNotifier<AuthStateModel> {
         // Debug: Print user info
         print('Setting authenticated state - User ID: ${user.id}, Role: ${user.role}');
         
-        // Ensure state is updated with the user
+        // Ensure state is updated with the user - use a new instance to force rebuild
         state = AuthStateModel(
           state: AuthState.authenticated,
           user: user,
         );
+        
+        // Force a small delay to ensure state propagation
+        await Future.delayed(const Duration(milliseconds: 100));
         
         // Verify state was set
         print('Auth state updated - State: ${state.state}, User: ${state.user?.email}');

@@ -98,15 +98,31 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
     // Debug: Print auth state changes
     print('AuthWrapper build - State: ${authState.state}, User: ${authState.user?.email}');
 
+    // Handle authenticated state - ensure user exists
+    if (authState.state == AuthState.authenticated) {
+      if (authState.user != null) {
+        print('Navigating to dashboard for role: ${authState.user!.role}');
+        return DashboardWrapper(userRole: authState.user!.role);
+      } else {
+        // User is null but state is authenticated - this shouldn't happen, but handle it
+        print('WARNING: Authenticated state but user is null - checking auth status');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(authControllerProvider.notifier).refreshUser();
+        });
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+    }
+
+    // Handle other states
     return switch (authState.state) {
       AuthState.unauthenticated => const LoginScreen(),
       AuthState.authenticating => const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         ),
-      AuthState.authenticated => authState.user != null 
-          ? DashboardWrapper(userRole: authState.user!.role)
-          : const LoginScreen(),
       AuthState.error => const LoginScreen(),
+      AuthState.authenticated => const LoginScreen(), // Fallback (shouldn't reach here)
     };
   }
 }

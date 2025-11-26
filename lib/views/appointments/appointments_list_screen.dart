@@ -29,9 +29,11 @@ class AppointmentsListScreen extends ConsumerWidget {
         },
         child: appointmentsAsync.when(
           data: (appointments) {
-            // Filter out completed appointments and sort by nearest date
+            // Filter out completed and cancelled appointments (they go to history)
+            // and sort by nearest date
             final unfinishedAppointments = appointments
-                .where((apt) => apt.status != AppointmentStatus.completed)
+                .where((apt) => apt.status != AppointmentStatus.completed && 
+                                apt.status != AppointmentStatus.cancelled)
                 .toList()
               ..sort((a, b) {
                 // Sort by confirmed date if available, otherwise proposed date

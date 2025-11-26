@@ -38,7 +38,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (mounted) {
         if (success) {
-          // Navigation handled by auth state listener
+          // Wait a bit for state to propagate and UI to rebuild
+          await Future.delayed(const Duration(milliseconds: 200));
+          
+          // Verify we're authenticated - if not, show error
+          final authState = ref.read(authControllerProvider);
+          if (authState.state != AuthState.authenticated) {
+            final l10n = AppLocalizations.of(context)!;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  authState.errorMessage ?? l10n.loginFailed,
+                ),
+                backgroundColor: AppTheme.errorColor,
+              ),
+            );
+          }
+          // Navigation is handled by AuthWrapper watching auth state
         } else {
           final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
