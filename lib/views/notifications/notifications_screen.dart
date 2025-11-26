@@ -311,58 +311,58 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                       children: [
                                         Expanded(
                                           child: ElevatedButton.icon(
-                                        onPressed: _actionInProgress[notification.id] == true
-                                            ? null
-                                            : () async {
-                                                setState(() {
-                                                  _actionInProgress[notification.id] = true;
-                                                });
-                                                
-                                                await _markAsRead(notification);
-                                                
-                                                try {
-                                                  // Accept the proposed time
-                                                  await ref.read(appointmentControllerProvider.notifier).confirmAppointment(
-                                                    notification.relatedId!,
-                                                  );
-                                                  
-                                                  // Refresh appointments list and consultation history
-                                                  ref.read(appointmentControllerProvider.notifier).loadAppointments();
-                                                  ref.invalidate(consultationHistoryProvider);
-                                                  
-                                                  if (mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text('Appointment time accepted! The lawyer will be notified.'),
-                                                        backgroundColor: AppTheme.successColor,
-                                                        duration: Duration(seconds: 3),
-                                                      ),
-                                                    );
-                                                    
-                                                    // Refresh notifications
-                                                    ref.invalidate(notificationsProvider);
-                                                    
-                                                    // Remove from in-progress
+                                            onPressed: _actionInProgress[notification.id] == true
+                                                ? null
+                                                : () async {
                                                     setState(() {
-                                                      _actionInProgress.remove(notification.id);
+                                                      _actionInProgress[notification.id] = true;
                                                     });
-                                                  }
-                                                } catch (e) {
-                                                  if (mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text('Failed to accept: ${e.toString()}'),
-                                                        backgroundColor: AppTheme.errorColor,
-                                                        duration: const Duration(seconds: 3),
-                                                      ),
-                                                    );
                                                     
-                                                    setState(() {
-                                                      _actionInProgress.remove(notification.id);
-                                                    });
-                                                  }
-                                                }
-                                              },
+                                                    await _markAsRead(notification);
+                                                    
+                                                    try {
+                                                      // Accept the proposed time
+                                                      await ref.read(appointmentControllerProvider.notifier).confirmAppointment(
+                                                        notification.relatedId!,
+                                                      );
+                                                      
+                                                      // Refresh appointments list and consultation history
+                                                      ref.read(appointmentControllerProvider.notifier).loadAppointments();
+                                                      ref.invalidate(consultationHistoryProvider);
+                                                      
+                                                      if (mounted) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text('Appointment time accepted! The lawyer will be notified.'),
+                                                            backgroundColor: AppTheme.successColor,
+                                                            duration: Duration(seconds: 3),
+                                                          ),
+                                                        );
+                                                        
+                                                        // Refresh notifications
+                                                        ref.invalidate(notificationsProvider);
+                                                        
+                                                        // Remove from in-progress
+                                                        setState(() {
+                                                          _actionInProgress.remove(notification.id);
+                                                        });
+                                                      }
+                                                    } catch (e) {
+                                                      if (mounted) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text('Failed to accept: ${e.toString()}'),
+                                                            backgroundColor: AppTheme.errorColor,
+                                                            duration: const Duration(seconds: 3),
+                                                          ),
+                                                        );
+                                                        
+                                                        setState(() {
+                                                          _actionInProgress.remove(notification.id);
+                                                        });
+                                                      }
+                                                    }
+                                                  },
                                             icon: _actionInProgress[notification.id] == true
                                                 ? const SizedBox(
                                                     width: 18,
@@ -384,83 +384,83 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: OutlinedButton.icon(
-                                        onPressed: _actionInProgress[notification.id] == true
-                                            ? null
-                                            : () async {
-                                                final shouldCancel = await showDialog<bool>(
-                                                  context: context,
-                                                  builder: (context) => AlertDialog(
-                                                    title: const Text('Cancel Appointment'),
-                                                    content: const Text(
-                                                      'Are you sure you want to cancel this appointment? This action cannot be undone.',
-                                                    ),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () => Navigator.pop(context, false),
-                                                        child: const Text('No'),
-                                                      ),
-                                                      ElevatedButton(
-                                                        onPressed: () => Navigator.pop(context, true),
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor: AppTheme.errorColor,
+                                            onPressed: _actionInProgress[notification.id] == true
+                                                ? null
+                                                : () async {
+                                                    final shouldCancel = await showDialog<bool>(
+                                                      context: context,
+                                                      builder: (context) => AlertDialog(
+                                                        title: const Text('Cancel Appointment'),
+                                                        content: const Text(
+                                                          'Are you sure you want to cancel this appointment? This action cannot be undone.',
                                                         ),
-                                                        child: const Text('Yes, Cancel'),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () => Navigator.pop(context, false),
+                                                            child: const Text('No'),
+                                                          ),
+                                                          ElevatedButton(
+                                                            onPressed: () => Navigator.pop(context, true),
+                                                            style: ElevatedButton.styleFrom(
+                                                              backgroundColor: AppTheme.errorColor,
+                                                            ),
+                                                            child: const Text('Yes, Cancel'),
+                                                          ),
+                                                        ],
                                                       ),
-                                                    ],
-                                                  ),
-                                                );
-
-                                                if (shouldCancel == true && mounted) {
-                                                  setState(() {
-                                                    _actionInProgress[notification.id] = true;
-                                                  });
-                                                  
-                                                  await _markAsRead(notification);
-                                                  
-                                                  try {
-                                                    // Cancel the appointment
-                                                    await ref.read(appointmentControllerProvider.notifier).cancelAppointment(
-                                                      notification.relatedId!,
                                                     );
-                                                    
-                                                    // Refresh appointments list and consultation history
-                                                    ref.read(appointmentControllerProvider.notifier).loadAppointments();
-                                                    ref.invalidate(consultationHistoryProvider);
-                                                    
-                                                    if (mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text('Appointment cancelled successfully.'),
-                                                          backgroundColor: AppTheme.errorColor,
-                                                          duration: Duration(seconds: 3),
-                                                        ),
-                                                      );
-                                                      
-                                                      // Refresh notifications
-                                                      ref.invalidate(notificationsProvider);
-                                                      
-                                                      // Remove from in-progress
+
+                                                    if (shouldCancel == true && mounted) {
                                                       setState(() {
-                                                        _actionInProgress.remove(notification.id);
+                                                        _actionInProgress[notification.id] = true;
                                                       });
-                                                    }
-                                                  } catch (e) {
-                                                    if (mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text('Failed to cancel: ${e.toString()}'),
-                                                          backgroundColor: AppTheme.errorColor,
-                                                          duration: const Duration(seconds: 3),
-                                                        ),
-                                                      );
                                                       
-                                                      setState(() {
-                                                        _actionInProgress.remove(notification.id);
-                                                      });
+                                                      await _markAsRead(notification);
+                                                      
+                                                      try {
+                                                        // Cancel the appointment
+                                                        await ref.read(appointmentControllerProvider.notifier).cancelAppointment(
+                                                          notification.relatedId!,
+                                                        );
+                                                        
+                                                        // Refresh appointments list and consultation history
+                                                        ref.read(appointmentControllerProvider.notifier).loadAppointments();
+                                                        ref.invalidate(consultationHistoryProvider);
+                                                        
+                                                        if (mounted) {
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text('Appointment cancelled successfully.'),
+                                                              backgroundColor: AppTheme.errorColor,
+                                                              duration: Duration(seconds: 3),
+                                                            ),
+                                                          );
+                                                          
+                                                          // Refresh notifications
+                                                          ref.invalidate(notificationsProvider);
+                                                          
+                                                          // Remove from in-progress
+                                                          setState(() {
+                                                            _actionInProgress.remove(notification.id);
+                                                          });
+                                                        }
+                                                      } catch (e) {
+                                                        if (mounted) {
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text('Failed to cancel: ${e.toString()}'),
+                                                              backgroundColor: AppTheme.errorColor,
+                                                              duration: const Duration(seconds: 3),
+                                                            ),
+                                                          );
+                                                          
+                                                          setState(() {
+                                                            _actionInProgress.remove(notification.id);
+                                                          });
+                                                        }
+                                                      }
                                                     }
-                                                  }
-                                                }
-                                              },
+                                                  },
                                             icon: _actionInProgress[notification.id] == true
                                                 ? const SizedBox(
                                                     width: 18,
@@ -482,8 +482,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                       ],
                                     ),
                                   ],
-                            ],
-                          ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
