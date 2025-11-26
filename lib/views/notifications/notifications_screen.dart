@@ -315,6 +315,68 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                         ),
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () async {
+                                          final shouldCancel = await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: const Text('Cancel Appointment'),
+                                              content: const Text(
+                                                'Are you sure you want to cancel this appointment? This action cannot be undone.',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context, false),
+                                                  child: const Text('No'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () => Navigator.pop(context, true),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: AppTheme.errorColor,
+                                                  ),
+                                                  child: const Text('Yes, Cancel'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+
+                                          if (shouldCancel == true) {
+                                            await _markAsRead(notification);
+                                            try {
+                                              await ref.read(appointmentControllerProvider.notifier).cancelAppointment(
+                                                notification.relatedId!,
+                                              );
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('Appointment cancelled'),
+                                                    backgroundColor: AppTheme.errorColor,
+                                                  ),
+                                                );
+                                                ref.invalidate(notificationsProvider);
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Failed to cancel: ${e.toString()}'),
+                                                    backgroundColor: AppTheme.errorColor,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          }
+                                        },
+                                        icon: const Icon(Icons.cancel, size: 18),
+                                        label: const Text('Cancel'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: AppTheme.errorColor,
+                                          side: BorderSide(color: AppTheme.errorColor),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],

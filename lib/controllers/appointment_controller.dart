@@ -79,6 +79,16 @@ class AppointmentController extends StateNotifier<AsyncValue<List<AppointmentMod
     }
   }
 
+  Future<AppointmentModel?> cancelAppointment(String appointmentId) async {
+    try {
+      final appointment = await _appointmentService.cancelAppointment(appointmentId);
+      await loadAppointments();
+      return appointment;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<AppointmentModel?> confirmAppointment(String appointmentId) async {
     try {
       final appointment = await _appointmentService.confirmAppointment(appointmentId);

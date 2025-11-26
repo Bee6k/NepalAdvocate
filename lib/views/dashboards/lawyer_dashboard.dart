@@ -735,34 +735,64 @@ class _LawyerDashboardState extends ConsumerState<LawyerDashboard> {
                                 ],
                               ),
                             ] else if (appointment.status.value == 'PROPOSED') ...[
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    try {
-                                      await ref.read(appointmentControllerProvider.notifier).confirmAppointment(appointment.id);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Appointment confirmed'),
-                                            backgroundColor: AppTheme.successColor,
-                                          ),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Failed to confirm: ${e.toString()}'),
-                                            backgroundColor: AppTheme.errorColor,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  child: const Text('Confirm'),
+                              // Show message if client hasn't accepted yet
+                              if (!appointment.clientConfirmation) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.accentColor.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        color: AppTheme.accentColor,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Waiting for client to accept the proposed time',
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                color: AppTheme.accentColor,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
+                              ] else ...[
+                                // Show confirm button only after client accepts
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      try {
+                                        await ref.read(appointmentControllerProvider.notifier).confirmAppointment(appointment.id);
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Appointment confirmed'),
+                                              backgroundColor: AppTheme.successColor,
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Failed to confirm: ${e.toString()}'),
+                                              backgroundColor: AppTheme.errorColor,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text('Confirm Appointment'),
+                                  ),
+                                ),
+                              ],
                             ],
                             if (appointment.conversationId != null && appointment.status.value == 'CONFIRMED') ...[
                               const SizedBox(height: 8),

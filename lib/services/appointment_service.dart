@@ -89,6 +89,21 @@ class AppointmentService {
     }
   }
 
+  Future<AppointmentModel> cancelAppointment(String appointmentId) async {
+    try {
+      final response = await _apiClient.patch(
+        '${ApiConstants.appointments}/$appointmentId/cancel',
+      );
+
+      if (response.data['success'] == true) {
+        return AppointmentModel.fromJson(response.data['data']['appointment']);
+      }
+      throw Exception(response.data['message'] ?? 'Failed to cancel appointment');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<AppointmentModel> confirmAppointment(String appointmentId) async {
     try {
       final response = await _apiClient.patch(
