@@ -238,11 +238,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     final message = messages[index];
                     
                     // Compare senderId with current user ID (handle both string and ObjectId formats)
-                    final currentUserId = currentUser?.id?.toString() ?? '';
-                    final messageSenderId = message.senderId?.toString() ?? '';
+                    // Normalize both IDs by trimming and converting to lowercase for comparison
+                    final currentUserId = (currentUser?.id?.toString() ?? '').trim().toLowerCase();
+                    final messageSenderId = (message.senderId?.toString() ?? '').trim().toLowerCase();
                     final isMe = currentUserId.isNotEmpty && 
                                  messageSenderId.isNotEmpty &&
                                  currentUserId == messageSenderId;
+                    
+                    // Debug logging (remove in production)
+                    if (currentUserId != messageSenderId && currentUserId.isNotEmpty && messageSenderId.isNotEmpty) {
+                      print('Message sender mismatch - Current: $currentUserId, Message: $messageSenderId');
+                    }
 
                     return _MessageBubble(
                       message: message,
@@ -322,6 +328,53 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Handle system messages (call status, etc.)
+    if (message.messageType == MessageType.system) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.spacingM,
+              vertical: AppConstants.spacingS,
+            ),
+            decoration: BoxDecoration(
+              color: AppTheme.cardColor.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppConstants.radiusM),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (message.content.toLowerCase().contains('rejected'))
+                  Icon(
+                    Icons.call_end,
+                    size: 16,
+                    color: AppTheme.errorColor,
+                  )
+                else if (message.content.toLowerCase().contains('ended'))
+                  Icon(
+                    Icons.call,
+                    size: 16,
+                    color: AppTheme.primaryColor,
+                  ),
+                if (message.content.toLowerCase().contains('rejected') || 
+                    message.content.toLowerCase().contains('ended'))
+                  const SizedBox(width: 8),
+                Text(
+                  message.content,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: AppConstants.spacingM),
       child: Row(
@@ -530,8 +583,12 @@ class _FileMessageWidgetState extends State<_FileMessageWidget> {
     // The backend serves files at /uploads with authentication
     final baseUrlWithoutApi = ApiConstants.baseUrl.replaceAll('/api', '');
     // Normalize path separators (handle both / and \)
-    final normalizedPath = widget.fileUrl.replaceAll('\\', '/');
-    return '$baseUrlWithoutApi/$normalizedPath';
+    // Ensure the path starts with / if it doesn't already
+    String normalizedPath = widget.fileUrl.replaceAll('\\', '/');
+    if (!normalizedPath.startsWith('/')) {
+      normalizedPath = '/$normalizedPath';
+    }
+    return '$baseUrlWithoutApi$normalizedPath';
   }
 
   bool _isImageFile(String fileName) {
@@ -749,12 +806,11 @@ class _FileMessageWidgetState extends State<_FileMessageWidget> {
         },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Container(
-            constraints: const BoxConstraints(
-              maxWidth: 250,
-              maxHeight: 300,
-            ),
+          child: SizedBox(
+            width: 250,
+            height: 300,
             child: Stack(
+              clipBehavior: Clip.hardEdge,
               children: [
                 _AuthenticatedImage(
                   imageUrl: _getImageUrl(),
@@ -921,22 +977,32 @@ class _AuthenticatedImageState extends State<_AuthenticatedImage> {
         width: widget.width,
         height: widget.height ?? 200,
         color: AppTheme.cardColor,
+        padding: const EdgeInsets.all(8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.broken_image,
               color: AppTheme.errorColor,
-              size: 48,
+              size: 32,
             ),
-            const SizedBox(height: 8),
-            Text(
-              _error ?? 'Failed to load image',
-              style: TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 12,
+            const SizedBox(height: 4),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Text(
+                  _error != null && _error!.length > 100
+                      ? 'Failed to load image'
+                      : (_error ?? 'Failed to load image'),
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),

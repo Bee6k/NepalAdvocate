@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 import '../../controllers/appointment_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/verification_controller.dart';
@@ -823,14 +824,81 @@ class _LawyerDashboardState extends ConsumerState<LawyerDashboard> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => AppCard(
-                  child: Text(
-                    'Error loading appointments: ${error.toString()}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.errorColor,
+                error: (error, stack) {
+                  // Check if it's a timeout or connection error
+                  String errorMessage = 'Unable to load appointments';
+                  String? detailedMessage;
+                  
+                  if (error is DioException) {
+                    if (error.type == DioExceptionType.connectionTimeout ||
+                        error.type == DioExceptionType.receiveTimeout ||
+                        error.type == DioExceptionType.sendTimeout) {
+                      errorMessage = 'Connection timeout';
+                      detailedMessage = 'The server is taking too long to respond. This may happen if the backend is starting up. Please try again in a moment.';
+                    } else if (error.type == DioExceptionType.connectionError) {
+                      errorMessage = 'Connection error';
+                      detailedMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+                    } else {
+                      errorMessage = 'Error loading appointments';
+                      detailedMessage = error.message ?? error.toString();
+                    }
+                  } else {
+                    detailedMessage = error.toString();
+                  }
+                  
+                  return AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: AppTheme.errorColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMessage,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      color: AppTheme.errorColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ),
+                          ],
                         ),
-                  ),
-                ),
+                        if (detailedMessage != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            detailedMessage,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              ref.read(appointmentControllerProvider.notifier).loadAppointments();
+                            },
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('Retry'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           ),

@@ -17,9 +17,9 @@ class ApiClient {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 30), // Increased for production
-        receiveTimeout: const Duration(seconds: 30), // Increased for production
-        sendTimeout: const Duration(seconds: 30), // Added for production
+        connectTimeout: const Duration(seconds: 60), // Increased for Render free tier
+        receiveTimeout: const Duration(seconds: 60), // Increased for Render free tier
+        sendTimeout: const Duration(seconds: 60), // Increased for Render free tier
         headers: {
           'Content-Type': 'application/json',
         },

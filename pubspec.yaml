@@ -61,6 +61,7 @@ dependencies:
   flutter_webrtc: ^0.9.48+hotfix.1
   just_audio: ^0.9.40
   flutter_ringtone_player: ^4.0.0
+  flutter_local_notifications: ^18.0.1
 
 dev_dependencies:
   flutter_test:
@@ -88,7 +89,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/icon/
+    - assets/icon/icon.png
+    - assets/icon/icon2.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -17,6 +17,7 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   final Map<String, bool> _actionInProgress = {}; // Track which notifications have actions in progress
+  final Set<String> _completedActions = {}; // Track notifications where action has been completed (accept/cancel)
 
   Future<void> _clearAllNotifications() async {
     final confirm = await showDialog<bool>(
@@ -541,54 +542,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                     ],
                                   ),
                                   // Show action buttons for APPOINTMENT_PROPOSED notifications
-                                  // Only show if action is not in progress and notification is not read
+                                  // Hide buttons if action has been completed (accept/cancel) or is in progress
                                   if (notification.type == 'APPOINTMENT_PROPOSED' && 
                                       notification.relatedId != null &&
                                       notification.relatedType == 'appointment' &&
                                       (_actionInProgress[notification.id] != true) &&
-                                      !notification.isRead) ...[
-                                    const SizedBox(height: 16),
-                                    Divider(
-                                      height: 1,
-                                      thickness: 1,
-                                      color: AppTheme.textSecondary.withOpacity(0.1),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.surfaceColor.withOpacity(0.5),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: AppTheme.textSecondary.withOpacity(0.1),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.touch_app_outlined,
-                                                size: 16,
-                                                color: AppTheme.accentColor,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'Choose an action:',
-                                                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                                      color: AppTheme.textSecondary,
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
-                                                      letterSpacing: 0.5,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 14),
-                                          Row(
-                                            children: [
+                                      !_completedActions.contains(notification.id)) ...[
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
                                         Expanded(
                                           child: Container(
                                             decoration: BoxDecoration(
@@ -630,13 +592,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                                             ),
                                                           );
                                                           
-                                                          // Refresh notifications
-                                                          ref.invalidate(notificationsProvider);
-                                                          
-                                                          // Remove from in-progress
+                                                          // Mark action as completed and remove from in-progress
                                                           setState(() {
+                                                            _completedActions.add(notification.id);
                                                             _actionInProgress.remove(notification.id);
                                                           });
+                                                          
+                                                          // Refresh notifications
+                                                          ref.invalidate(notificationsProvider);
                                                         }
                                                       } catch (e) {
                                                         if (mounted) {
@@ -656,27 +619,30 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                                     },
                                               icon: _actionInProgress[notification.id] == true
                                                   ? const SizedBox(
-                                                      width: 18,
-                                                      height: 18,
+                                                      width: 16,
+                                                      height: 16,
                                                       child: CircularProgressIndicator(
                                                         strokeWidth: 2.5,
                                                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                       ),
                                                     )
-                                                  : const Icon(Icons.check_circle_outline, size: 20),
+                                                  : const Icon(Icons.check_circle_outline, size: 18),
                                               label: Text(
                                                 _actionInProgress[notification.id] == true ? 'Accepting...' : 'Accept',
                                                 style: const TextStyle(
-                                                  fontSize: 15,
+                                                  fontSize: 14,
                                                   fontWeight: FontWeight.w600,
-                                                  letterSpacing: 0.3,
+                                                  letterSpacing: 0.2,
                                                 ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: AppTheme.successColor,
                                                 foregroundColor: Colors.white,
-                                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                                                 elevation: 0,
+                                                minimumSize: const Size(0, 44),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius: BorderRadius.circular(12),
                                                 ),
@@ -766,13 +732,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                                               ),
                                                             );
                                                             
-                                                            // Refresh notifications
-                                                            ref.invalidate(notificationsProvider);
-                                                            
-                                                            // Remove from in-progress
+                                                            // Mark action as completed and remove from in-progress
                                                             setState(() {
+                                                              _completedActions.add(notification.id);
                                                               _actionInProgress.remove(notification.id);
                                                             });
+                                                            
+                                                            // Refresh notifications
+                                                            ref.invalidate(notificationsProvider);
                                                           }
                                                         } catch (e) {
                                                           if (mounted) {
@@ -793,27 +760,30 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                                     },
                                               icon: _actionInProgress[notification.id] == true
                                                   ? const SizedBox(
-                                                      width: 18,
-                                                      height: 18,
+                                                      width: 16,
+                                                      height: 16,
                                                       child: CircularProgressIndicator(
                                                         strokeWidth: 2.5,
                                                         valueColor: AlwaysStoppedAnimation<Color>(AppTheme.errorColor),
                                                       ),
                                                     )
-                                                  : const Icon(Icons.close, size: 20),
+                                                  : const Icon(Icons.close, size: 18),
                                               label: Text(
                                                 _actionInProgress[notification.id] == true ? 'Cancelling...' : 'Cancel',
                                                 style: TextStyle(
-                                                  fontSize: 15,
+                                                  fontSize: 14,
                                                   fontWeight: FontWeight.w600,
-                                                  letterSpacing: 0.3,
+                                                  letterSpacing: 0.2,
                                                   color: AppTheme.errorColor,
                                                 ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
                                               style: OutlinedButton.styleFrom(
                                                 foregroundColor: AppTheme.errorColor,
                                                 side: BorderSide.none,
-                                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                                minimumSize: const Size(0, 44),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius: BorderRadius.circular(12),
                                                 ),
@@ -821,10 +791,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                             ),
                                           ),
                                         ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
+                                      ],
                                     ),
                                   ],
                                 ],

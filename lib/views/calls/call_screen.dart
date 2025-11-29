@@ -10,6 +10,7 @@ import '../../services/call_service.dart';
 import '../../models/user_model.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/api_client.dart';
 import '../../widgets/common/verified_avatar.dart';
 
 class CallScreen extends ConsumerStatefulWidget {
@@ -53,9 +54,19 @@ class _CallScreenState extends ConsumerState<CallScreen> {
     super.didChangeDependencies();
     // Start ringing when call state becomes ringing (for incoming calls)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final callState = ref.read(callControllerProvider);
-      if (callState == CallState.ringing && !_isRinging) {
-        _startRinging();
+      if (widget.isIncoming) {
+        // For incoming calls, ensure ringtone is stopped first, then start
+        _stopRinging().then((_) {
+          Future.delayed(const Duration(milliseconds: 100), () {
+            _startRinging();
+          });
+        });
+      } else {
+        // For outgoing calls, check state
+        final callState = ref.read(callControllerProvider);
+        if (callState == CallState.ringing && !_isRinging) {
+          _startRinging();
+        }
       }
     });
   }
@@ -63,24 +74,35 @@ class _CallScreenState extends ConsumerState<CallScreen> {
   Future<void> _startRinging() async {
     if (!mounted) return;
     
+    print('CallScreen: Starting ringtone, isRinging: $_isRinging');
+    
+    // Always stop any existing ringtone first
+    await _stopRinging();
+    
+    // Small delay to ensure previous ringtone is fully stopped
+    await Future.delayed(const Duration(milliseconds: 50));
+    
     setState(() {
       _isRinging = true;
     });
     
     try {
-      // Play ringtone - use system ringtone
-      await FlutterRingtonePlayer().playRingtone(
+      // Play ringtone - use system ringtone with looping
+      await FlutterRingtonePlayer().play(
+        android: AndroidSounds.ringtone,
+        looping: true,
+        volume: 1.0,
         asAlarm: false,
       );
+      print('CallScreen: Ringtone started successfully');
     } catch (e) {
       print('Error playing ringtone: $e');
-      // Fallback: try Android ringtone only
+      // Fallback: try playRingtone
       try {
-        await FlutterRingtonePlayer().play(
-          android: AndroidSounds.ringtone,
-          looping: true,
-          volume: 1.0,
+        await FlutterRingtonePlayer().playRingtone(
+          asAlarm: false,
         );
+        print('CallScreen: Fallback ringtone started');
       } catch (e2) {
         print('Error playing fallback ringtone: $e2');
       }
@@ -88,16 +110,21 @@ class _CallScreenState extends ConsumerState<CallScreen> {
   }
 
   Future<void> _stopRinging() async {
-    if (!_isRinging) return;
+    if (!_isRinging && !mounted) return;
     
-    setState(() {
-      _isRinging = false;
-    });
+    print('CallScreen: Stopping ringtone, isRinging: $_isRinging');
     
     try {
       await FlutterRingtonePlayer().stop();
+      print('CallScreen: Ringtone stopped');
     } catch (e) {
       print('Error stopping ringtone: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRinging = false;
+        });
+      }
     }
   }
 
@@ -184,10 +211,45 @@ class _CallScreenState extends ConsumerState<CallScreen> {
     final currentUser = ref.watch(authControllerProvider).user;
     final otherUser = callController.otherUser;
 
+    // For incoming calls, ensure state is set to ringing
+    if (widget.isIncoming) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // If state is not ringing yet, check if we have incoming call data
+        if (callState != CallState.ringing) {
+          final incomingData = callController.incomingCallData;
+          if (incomingData != null) {
+            // The call service should have set the state, but if not, we'll show buttons anyway
+            // The buttons will show for incoming calls regardless of state
+          }
+        }
+      });
+    }
+    
+    // Determine the effective call state for UI
+    // For incoming calls, show ringing UI even if state hasn't updated yet
+    final effectiveCallState = widget.isIncoming && callState == CallState.idle 
+        ? CallState.ringing 
+        : callState;
+    
     // Start call if not incoming
     if (!widget.isIncoming && callState == CallState.idle) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
+          // Fetch other user information first
+          UserModel? otherUserInfo;
+          try {
+            final apiClient = ApiClient();
+            final response = await apiClient.dio.get('/auth/user/${widget.otherUserId}');
+            if (response.data['success'] == true && response.data['data'] != null) {
+              otherUserInfo = UserModel.fromJson(response.data['data']['user']);
+              // Set other user in call controller
+              callController.setOtherUser(otherUserInfo);
+            }
+          } catch (e) {
+            print('Error fetching other user info: $e');
+            // Continue with call even if user fetch fails
+          }
+          
           // Request permissions first before starting call
           final hasPermissions = await _requestPermissions(widget.callType);
           if (!hasPermissions) {
@@ -279,10 +341,22 @@ class _CallScreenState extends ConsumerState<CallScreen> {
       }
       
       // Handle incoming call ringing state
-      if (callState == CallState.ringing && !_isRinging) {
-        _startRinging();
-      } else if (callState != CallState.ringing && _isRinging) {
-        _stopRinging();
+      // For incoming calls, always ring when state is ringing or when screen first appears
+      if (widget.isIncoming) {
+        if (callState == CallState.ringing && !_isRinging) {
+          // Start ringing for incoming call
+          _startRinging();
+        } else if (callState != CallState.ringing && callState != CallState.idle && _isRinging) {
+          // Stop ringing when call is answered/rejected/ended
+          _stopRinging();
+        }
+      } else {
+        // For outgoing calls
+        if (callState == CallState.ringing && !_isRinging) {
+          _startRinging();
+        } else if (callState != CallState.ringing && callState != CallState.idle && _isRinging) {
+          _stopRinging();
+        }
       }
       
       // Sync recording and speaker state
@@ -297,15 +371,25 @@ class _CallScreenState extends ConsumerState<CallScreen> {
         }
       }
       
-      // Handle call ended state - show ended UI and auto-navigate after delay
+      // Handle call ended/rejected state - show ended UI and auto-navigate after delay
       if ((callState == CallState.ended || callState == CallState.rejected) && !_hasShownEndedState) {
         _hasShownEndedState = true;
-        // Auto-navigate back after 3 seconds
-        Future.delayed(const Duration(seconds: 3), () {
+        // Stop ringing if it's still playing
+        _stopRinging();
+        // Auto-navigate back after 2 seconds (faster for rejected calls)
+        Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
             Navigator.pop(context);
           }
         });
+      }
+      
+      // Also handle if state becomes idle (shouldn't happen, but handle it)
+      if (callState == CallState.idle && !widget.isIncoming && _hasShownEndedState == false) {
+        // If we're in calling state and suddenly become idle, navigate back
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     });
 
@@ -348,7 +432,7 @@ class _CallScreenState extends ConsumerState<CallScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _getCallStateText(callState),
+                                _getCallStateText(effectiveCallState),
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 16,
@@ -361,7 +445,7 @@ class _CallScreenState extends ConsumerState<CallScreen> {
               )
             else
               // Voice call UI
-              _buildVoiceCallUI(otherUser, callState),
+              _buildVoiceCallUI(otherUser, effectiveCallState),
 
             // Local video (small overlay for video calls)
             if (isVideoCall && _localRenderer != null && callController.localStream != null)
@@ -420,7 +504,7 @@ class _CallScreenState extends ConsumerState<CallScreen> {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildCallControls(callState, callController, currentUser),
+              child: _buildCallControls(effectiveCallState, callController, currentUser),
             ),
           ],
         ),
@@ -429,6 +513,11 @@ class _CallScreenState extends ConsumerState<CallScreen> {
   }
 
   Widget _buildVoiceCallUI(UserModel? otherUser, CallState callState) {
+    // For incoming calls, show ringing state even if state hasn't updated
+    final effectiveState = widget.isIncoming && callState == CallState.idle 
+        ? CallState.ringing 
+        : callState;
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -450,7 +539,7 @@ class _CallScreenState extends ConsumerState<CallScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            _getCallStateText(callState),
+            _getCallStateText(effectiveState),
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 16,
@@ -477,7 +566,8 @@ class _CallScreenState extends ConsumerState<CallScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (callState == CallState.ringing)
+          // Show accept/reject buttons for incoming calls (ringing state or if isIncoming flag is true)
+          if (callState == CallState.ringing || (widget.isIncoming && callState == CallState.idle))
             // Incoming call controls - simple accept/reject buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,

@@ -7,15 +7,19 @@ import 'core/utils/api_client.dart';
 import 'core/utils/storage_service.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/locale_controller.dart';
+import 'services/local_notification_service.dart';
 import 'views/auth/login_screen.dart';
 import 'views/onboarding/onboarding_screen.dart';
 import 'views/dashboards/dashboard_wrapper.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize API client
   ApiClient().initialize();
+  
+  // Initialize local notification service
+  await LocalNotificationService().initialize();
   
   runApp(
     const ProviderScope(

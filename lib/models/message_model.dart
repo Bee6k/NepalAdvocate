@@ -71,15 +71,20 @@ class MessageModel {
       // Extract sender ID - prioritize senderId field, then extract from sender object
       String senderId = '';
       if (json['senderId'] != null) {
-        senderId = json['senderId'].toString();
+        senderId = json['senderId'].toString().trim();
       } else if (json['sender'] != null) {
         if (json['sender'] is String) {
-          senderId = json['sender'].toString();
+          senderId = json['sender'].toString().trim();
         } else if (json['sender'] is Map) {
-          senderId = json['sender']['_id']?.toString() ?? 
+          senderId = (json['sender']['_id']?.toString() ?? 
                      json['sender']['id']?.toString() ?? 
-                     '';
+                     '').trim();
         }
+      }
+      
+      // Debug: Log if senderId is empty (remove in production)
+      if (senderId.isEmpty) {
+        print('Warning: MessageModel - senderId is empty. JSON: ${json['sender']}');
       }
 
       return MessageModel(

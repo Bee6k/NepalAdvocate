@@ -11,6 +11,9 @@ class ChatService {
   final StorageService _storage = StorageService();
 
   bool get isConnected => _socket?.connected ?? false;
+  
+  // Expose socket for appointment event listeners
+  IO.Socket? get socket => _socket;
 
   Future<void> connect() async {
     if (_socket?.connected ?? false) return;

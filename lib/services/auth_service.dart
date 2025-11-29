@@ -124,16 +124,35 @@ class AuthService {
       final response = await _apiClient.get(ApiConstants.me).timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          print('Get current user timeout');
+          print('Get current user timeout - trying stored data');
           throw Exception('Request timeout');
         },
       );
       if (response.data['success'] == true && response.data['data'] != null) {
-        return UserModel.fromJson(response.data['data']['user']);
+        final user = UserModel.fromJson(response.data['data']['user']);
+        // Update stored user data with fresh data
+        await _storage.saveUserData(jsonEncode(user.toJson()));
+        return user;
       }
       return null;
     } catch (e) {
-      print('Error getting current user: $e');
+      print('Error getting current user from API: $e');
+      // Fallback to stored user data if API call fails
+      return await getStoredUser();
+    }
+  }
+
+  /// Get user from stored data (fallback when API is unavailable)
+  Future<UserModel?> getStoredUser() async {
+    try {
+      final userDataJson = await _storage.getUserData();
+      if (userDataJson != null && userDataJson.isNotEmpty) {
+        final userData = jsonDecode(userDataJson) as Map<String, dynamic>;
+        return UserModel.fromJson(userData);
+      }
+      return null;
+    } catch (e) {
+      print('Error getting stored user: $e');
       return null;
     }
   }

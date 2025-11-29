@@ -23,6 +23,7 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
   final _notesController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -69,6 +70,11 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
         return;
       }
 
+      // Start loading
+      setState(() {
+        _isLoading = true;
+      });
+
       try {
         final timeString = '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
 
@@ -81,6 +87,10 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
             );
 
         if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          
           Navigator.pop(context, true);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -91,6 +101,10 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
         }
       } catch (e) {
         if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error: ${e.toString()}'),
@@ -108,14 +122,16 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
       appBar: AppBar(
         title: const Text('Book Appointment'),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppConstants.spacingL),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppConstants.spacingL),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                 // Lawyer Info Card
                 Card(
                   child: Padding(
@@ -151,24 +167,36 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
                 ),
                 const SizedBox(height: 8),
                 InkWell(
-                  onTap: _selectDate,
-                  child: Container(
-                    padding: const EdgeInsets.all(AppConstants.spacingM),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusM),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today, color: AppTheme.primaryColor),
-                        const SizedBox(width: 12),
-                        Text(
-                          _selectedDate == null
-                              ? 'Select date'
-                              : DateFormat('MMM dd, yyyy').format(_selectedDate!),
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ],
+                  onTap: _isLoading ? null : _selectDate,
+                  child: Opacity(
+                    opacity: _isLoading ? 0.6 : 1.0,
+                    child: Container(
+                      padding: const EdgeInsets.all(AppConstants.spacingM),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            color: _isLoading
+                                ? AppTheme.textSecondary
+                                : AppTheme.primaryColor,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _selectedDate == null
+                                ? 'Select date'
+                                : DateFormat('MMM dd, yyyy').format(_selectedDate!),
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  color: _isLoading
+                                      ? AppTheme.textSecondary
+                                      : null,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -180,24 +208,36 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
                 ),
                 const SizedBox(height: 8),
                 InkWell(
-                  onTap: _selectTime,
-                  child: Container(
-                    padding: const EdgeInsets.all(AppConstants.spacingM),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusM),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.access_time, color: AppTheme.primaryColor),
-                        const SizedBox(width: 12),
-                        Text(
-                          _selectedTime == null
-                              ? 'Select time'
-                              : _selectedTime!.format(context),
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ],
+                  onTap: _isLoading ? null : _selectTime,
+                  child: Opacity(
+                    opacity: _isLoading ? 0.6 : 1.0,
+                    child: Container(
+                      padding: const EdgeInsets.all(AppConstants.spacingM),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusM),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: _isLoading
+                                ? AppTheme.textSecondary
+                                : AppTheme.primaryColor,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _selectedTime == null
+                                ? 'Select time'
+                                : _selectedTime!.format(context),
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  color: _isLoading
+                                      ? AppTheme.textSecondary
+                                      : null,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -207,6 +247,7 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
                   hint: 'Briefly describe why you need this appointment',
                   controller: _reasonController,
                   maxLines: 4,
+                  enabled: !_isLoading,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please provide a reason for the appointment';
@@ -223,16 +264,40 @@ class _AppointmentBookingScreenState extends ConsumerState<AppointmentBookingScr
                   hint: 'Any additional information you want to share',
                   controller: _notesController,
                   maxLines: 3,
+                  enabled: !_isLoading,
                 ),
-                const SizedBox(height: AppConstants.spacingXL),
-                AppButton(
-                  text: 'Request Appointment',
-                  onPressed: _submitBooking,
+                    const SizedBox(height: AppConstants.spacingXL),
+                    AppButton(
+                      text: 'Request Appointment',
+                      onPressed: _submitBooking,
+                      isLoading: _isLoading,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          // Loading overlay
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Sending appointment request...'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -18,8 +18,11 @@ class CallController extends StateNotifier<CallState> {
     };
 
     _callService.onIncomingCall = (data) {
-      _incomingCallData = data;
+      print('CallController: Received incoming call data: $data');
+      // Store the incoming call data with offer
+      _incomingCallData = Map<String, dynamic>.from(data);
       state = CallState.ringing;
+      print('CallController: Stored incoming call data, offer present: ${_incomingCallData?['offer'] != null}');
     };
 
     _callService.onCallError = (error) {
@@ -43,9 +46,52 @@ class CallController extends StateNotifier<CallState> {
   }
 
   Future<void> acceptCall() async {
-    if (_incomingCallData == null) return;
+    // Try to get incoming call data from multiple sources
+    Map<String, dynamic>? callData;
+    
+    // First, try stored incoming call data in controller
+    if (_incomingCallData != null && _incomingCallData!['offer'] != null) {
+      callData = Map<String, dynamic>.from(_incomingCallData!);
+    } else {
+      // Try to get from call service stored data
+      final serviceData = _callService.storedIncomingCallData;
+      if (serviceData != null && serviceData['offer'] != null) {
+        callData = Map<String, dynamic>.from(serviceData);
+        // Also update controller's stored data
+        _incomingCallData = callData;
+      }
+    }
+    
+    // If still no data, check if we can construct it from service
+    if (callData == null) {
+      final callId = _callService.callId;
+      final conversationId = _callService.conversationId;
+      final callType = _callService.callType;
+      
+      if (callId == null || conversationId == null || callType == null) {
+        throw Exception('No incoming call data available. Please wait for the call to be received.');
+      }
+      
+      // If we don't have the offer, we can't accept
+      throw Exception('Call offer not available. The incoming call may have expired or was not received properly.');
+    }
+    
+    // Validate required fields
+    if (callData['callId'] == null) {
+      throw Exception('Call ID is missing');
+    }
+    if (callData['offer'] == null) {
+      print('Call data available but offer is missing: $callData');
+      throw Exception('Call offer is missing. Cannot accept call.');
+    }
+    
+    // Ensure callerId is set
+    if (callData['callerId'] == null && _otherUser != null) {
+      callData['callerId'] = _otherUser!.id;
+    }
+    
     try {
-      await _callService.acceptCall(_incomingCallData!);
+      await _callService.acceptCall(callData);
       _incomingCallData = null;
     } catch (e) {
       rethrow;
@@ -53,15 +99,21 @@ class CallController extends StateNotifier<CallState> {
   }
 
   Future<void> rejectCall() async {
+    print('CallController: Rejecting call');
     await _callService.rejectCall();
     _incomingCallData = null;
+    // State will be set to idle by the service cleanup, but ensure it here too
     state = CallState.idle;
+    print('CallController: Call rejected, state reset to idle');
   }
 
   Future<void> endCall() async {
+    print('CallController: Ending call');
     await _callService.endCall();
     _incomingCallData = null;
+    // State will be set to idle by the service cleanup, but ensure it here too
     state = CallState.idle;
+    print('CallController: Call ended, state reset to idle');
   }
 
   Future<void> toggleMute() async {

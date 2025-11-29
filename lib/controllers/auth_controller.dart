@@ -45,35 +45,75 @@ class AuthController extends StateNotifier<AuthStateModel> {
       final isAuth = await _authService.isAuthenticated().timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          print('Auth check timeout - assuming not authenticated');
-          return false;
+          print('Auth check timeout - checking stored data');
+          return true; // Continue to check stored data
         },
       );
       
       if (isAuth) {
         try {
-          final user = await _authService.getCurrentUser().timeout(
-            const Duration(seconds: 5),
-            onTimeout: () {
-              print('Get user timeout - returning null');
-              return null;
-            },
-          );
+          // Try to get user from API first
+          UserModel? user;
+          try {
+            user = await _authService.getCurrentUser().timeout(
+              const Duration(seconds: 5),
+              onTimeout: () {
+                print('Get user from API timeout - trying stored data');
+                return null;
+              },
+            );
+          } catch (e) {
+            print('Error getting user from API: $e - trying stored data');
+          }
+          
+          // If API call failed, try to restore from stored data
+          if (user == null) {
+            print('Attempting to restore user from stored data');
+            user = await _authService.getStoredUser();
+            if (user != null) {
+              print('Successfully restored user from stored data: ${user.email}');
+            }
+          }
+          
           if (user != null) {
             state = AuthStateModel(state: AuthState.authenticated, user: user);
+            print('Auth status check: User authenticated - ${user.email}');
           } else {
+            // No user found in API or stored data - clear auth
+            print('No user found - clearing authentication');
+            await _authService.logout();
             state = AuthStateModel(state: AuthState.unauthenticated);
           }
         } catch (e) {
           print('Error getting current user: $e');
-          state = AuthStateModel(state: AuthState.unauthenticated);
+          // Try to restore from stored data as last resort
+          final storedUser = await _authService.getStoredUser();
+          if (storedUser != null) {
+            print('Restored user from stored data after error: ${storedUser.email}');
+            state = AuthStateModel(state: AuthState.authenticated, user: storedUser);
+          } else {
+            state = AuthStateModel(state: AuthState.unauthenticated);
+          }
         }
       } else {
+        // No token found - check if we have stored user data (shouldn't happen, but handle it)
+        final storedUser = await _authService.getStoredUser();
+        if (storedUser != null) {
+          print('Token missing but stored user found - clearing invalid session');
+          await _authService.logout();
+        }
         state = AuthStateModel(state: AuthState.unauthenticated);
       }
     } catch (e) {
       print('Error checking auth status: $e');
-      state = AuthStateModel(state: AuthState.unauthenticated);
+      // Last resort: try to restore from stored data
+      final storedUser = await _authService.getStoredUser();
+      if (storedUser != null) {
+        print('Restored user from stored data after exception: ${storedUser.email}');
+        state = AuthStateModel(state: AuthState.authenticated, user: storedUser);
+      } else {
+        state = AuthStateModel(state: AuthState.unauthenticated);
+      }
     }
   }
 
@@ -189,8 +229,10 @@ class AuthController extends StateNotifier<AuthStateModel> {
   }
 
   Future<void> logout() async {
+    print('Logging out user - clearing all stored data');
     await _authService.logout();
     state = AuthStateModel(state: AuthState.unauthenticated);
+    print('Logout complete - user is now unauthenticated');
   }
 
   Future<void> refreshUser() async {
