@@ -32,6 +32,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _showLawyerFields = false;
   bool _acceptedTerms = false;
   bool _acceptedPrivacy = false;
+  bool _showTermsError = false;
 
   @override
   void dispose() {
@@ -46,14 +47,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     final l10n = AppLocalizations.of(context)!;
-    
+
+    // Reset error state
+    setState(() {
+      _showTermsError = false;
+    });
+
     // Validate form first
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     // Then check terms and privacy acceptance
     if (!_acceptedTerms || !_acceptedPrivacy) {
+      setState(() {
+        _showTermsError = true;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.mustAcceptTerms),
@@ -64,24 +74,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     // Proceed with registration
-    // Don't send lawyerData if it's empty - let backend handle lawyer profile creation later
-    Map<String, dynamic>? lawyerData;
-    // Only set lawyerData if we have actual data to send
-    // For now, lawyers can register without profile details
-    
     final phoneValue = _phoneController.text.trim();
-    
+
     final success = await ref.read(authControllerProvider.notifier).register(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          role: _selectedRole.value,
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          phone: phoneValue.isEmpty ? null : phoneValue,
-          lawyerData: null, // Don't send empty lawyerData
-          acceptedTerms: _acceptedTerms,
-          acceptedPrivacy: _acceptedPrivacy,
-        );
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      role: _selectedRole.value,
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      phone: phoneValue.isEmpty ? null : phoneValue,
+      lawyerData: null,
+      acceptedTerms: _acceptedTerms,
+      acceptedPrivacy: _acceptedPrivacy,
+    );
 
     if (mounted) {
       if (success) {
@@ -101,10 +106,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   void _toggleLanguage() {
     final currentLocale = ref.read(localeControllerProvider);
-    final newLocale = currentLocale.languageCode == 'en' 
-        ? const Locale('ne') 
+    final newLocale = currentLocale.languageCode == 'en'
+        ? const Locale('ne')
         : const Locale('en');
     ref.read(localeControllerProvider.notifier).setLanguage(newLocale);
+  }
+
+  void _onTermsChanged(bool? value) {
+    if (value != null) {
+      setState(() {
+        _acceptedTerms = value;
+        if (value && _acceptedPrivacy) {
+          _showTermsError = false;
+        }
+      });
+    }
+  }
+
+  void _onPrivacyChanged(bool? value) {
+    if (value != null) {
+      setState(() {
+        _acceptedPrivacy = value;
+        if (value && _acceptedTerms) {
+          _showTermsError = false;
+        }
+      });
+    }
   }
 
   @override
@@ -305,7 +332,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     color: AppTheme.surfaceColor,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: _showTermsError
+                          ? AppTheme.errorColor
+                          : AppTheme.textSecondary.withOpacity(0.3),
+                      width: _showTermsError ? 2 : 1,
                     ),
                   ),
                   child: Column(
@@ -313,17 +343,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     children: [
                       CheckboxListTile(
                         value: _acceptedTerms,
-                        onChanged: (bool? value) {
-                          if (value != null) {
-                            setState(() {
-                              _acceptedTerms = value;
-                            });
-                          }
-                        },
+                        onChanged: _onTermsChanged,
                         title: Row(
                           children: [
                             Text(
-                              l10n.acceptTerms.split('Terms of Service')[0],
+                              '${l10n.acceptTerms.split('Terms of Service')[0].trim()} ',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             GestureDetector(
@@ -340,9 +364,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               child: Text(
                                 l10n.termsOfService,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppTheme.primaryColor,
-                                      decoration: TextDecoration.underline,
-                                    ),
+                                  color: AppTheme.primaryColor,
+                                  decoration: TextDecoration.underline,
+                                ),
                               ),
                             ),
                           ],
@@ -353,17 +377,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       CheckboxListTile(
                         value: _acceptedPrivacy,
-                        onChanged: (bool? value) {
-                          if (value != null) {
-                            setState(() {
-                              _acceptedPrivacy = value;
-                            });
-                          }
-                        },
+                        onChanged: _onPrivacyChanged,
                         title: Row(
                           children: [
                             Text(
-                              l10n.acceptPrivacy.split('Privacy Policy')[0],
+                              '${l10n.acceptPrivacy.split('Privacy Policy')[0].trim()} ',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             GestureDetector(
@@ -380,9 +398,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               child: Text(
                                 l10n.privacyPolicy,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppTheme.primaryColor,
-                                      decoration: TextDecoration.underline,
-                                    ),
+                                  color: AppTheme.primaryColor,
+                                  decoration: TextDecoration.underline,
+                                ),
                               ),
                             ),
                           ],
@@ -391,6 +409,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         contentPadding: EdgeInsets.zero,
                         dense: true,
                       ),
+                      if (_showTermsError) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.mustAcceptTerms,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.errorColor,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -408,4 +435,3 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 }
-
