@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/locale_controller.dart';
+import '../../views/dashboards/dashboard_wrapper.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_text_field.dart';
 import '../../core/theme/app_theme.dart';
@@ -38,23 +39,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (mounted) {
         if (success) {
-          // Wait a bit for state to propagate and UI to rebuild
-          await Future.delayed(const Duration(milliseconds: 200));
-          
-          // Verify we're authenticated - if not, show error
+          // Navigation fallback: if authenticated and user present, go to dashboard immediately.
           final authState = ref.read(authControllerProvider);
-          if (authState.state != AuthState.authenticated) {
-            final l10n = AppLocalizations.of(context)!;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  authState.errorMessage ?? l10n.loginFailed,
-                ),
-                backgroundColor: AppTheme.errorColor,
+          if (authState.state == AuthState.authenticated && authState.user != null) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => DashboardWrapper(userRole: authState.user!.role),
               ),
+              (route) => false,
             );
+          } else {
+            // Wait briefly for state propagation, then re-check.
+            await Future.delayed(const Duration(milliseconds: 150));
+            final updatedState = ref.read(authControllerProvider);
+            if (updatedState.state == AuthState.authenticated && updatedState.user != null) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => DashboardWrapper(userRole: updatedState.user!.role),
+                ),
+                (route) => false,
+              );
+            } else {
+              final l10n = AppLocalizations.of(context)!;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    updatedState.errorMessage ?? l10n.loginFailed,
+                  ),
+                  backgroundColor: AppTheme.errorColor,
+                ),
+              );
+            }
           }
-          // Navigation is handled by AuthWrapper watching auth state
         } else {
           final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
