@@ -90,7 +90,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     if (mounted) {
       if (success) {
-        // Navigation handled by auth state listener
+        // Show success and immediately log the user in with the same credentials.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.registeredSuccessfully),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+
+        // Trigger login to ensure the session is established and navigation occurs.
+        await ref.read(authControllerProvider.notifier).login(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
