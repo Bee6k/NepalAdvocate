@@ -92,8 +92,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (success) {
         // Show success and immediately log the user in with the same credentials.
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.registeredSuccessfully),
+          const SnackBar(
+            content: Text('Registered successfully'),
             backgroundColor: AppTheme.successColor,
           ),
         );
